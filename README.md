@@ -36,4 +36,6 @@ npm run build
 
 ## Data
 
+The globe shows the 10 biggest cities on each inhabited continent, plus a handful of others. Rankings and populations come from the [UN World Urbanization Prospects 2025](https://population.un.org/wup/) (its "cities" under the Degree of Urbanization method). Oceania is the exception: only Sydney and Melbourne make the UN's global list, so its other eight come from Australian Bureau of Statistics and Stats NZ urban-area figures. Population is used only to decide which labels show when cities crowd together.
+
 Coastlines and borders come from [Natural Earth](https://www.naturalearthdata.com/) (public domain), via [world-atlas](https://github.com/topojson/world-atlas) for the globe and basemap for the static map.

@@ -180,12 +180,12 @@
     if (showLabels) {
       const vis = [];
       for (const [name, lon, lat] of GEO.cities) marker([lon, lat], (x, y) => vis.push({ name, lat, x, y }));
-      for (const c of vis) taken.push(box(c.x - 4, c.y - 4, 8, 8));
+      for (const c of vis) taken.push({ ...box(c.x - 4, c.y - 4, 8, 8), owner: c.name });
       vis.sort((a, b) => rank(a.name) - rank(b.name));
 
       ctx.font = "11px system-ui"; ctx.textBaseline = "middle";
       const LH = 13, PAD = 2;
-      const hitsBox = (b) => taken.some((t) => b.x < t.x + t.w + PAD && b.x + b.w + PAD > t.x && b.y < t.y + t.h + PAD && b.y + b.h + PAD > t.y);
+      const hitsBox = (b, self) => taken.some((t) => t.owner !== self && b.x < t.x + t.w + PAD && b.x + b.w + PAD > t.x && b.y < t.y + t.h + PAD && b.y + b.h + PAD > t.y);
       const onScreen = (b) => b.x > 2 && b.y > 2 && b.x + b.w < W - 2 && b.y + b.h < H - 2;
 
       const MIN_DOT_SEP = 22; // px: closer than this to a higher-priority dot, a label would be ambiguous
@@ -200,7 +200,7 @@
           [c.x + 4, c.y - LH - 2], [c.x + 4, c.y + 2],
           [c.x - w / 2, c.y - LH - 5], [c.x - w / 2, c.y + 5],
         ];
-        const spot = spots.map(([x, y]) => box(x, y, w, LH)).find((b) => onScreen(b) && !hitsBox(b));
+        const spot = spots.map(([x, y]) => box(x, y, w, LH)).find((b) => onScreen(b) && !hitsBox(b, c.name));
         c.labelled = !!spot;
         if (spot) {
           taken.push(spot);
@@ -224,12 +224,9 @@
   }
   let hits = [];
 
-  // Label priority when space is tight: lower index wins. Unlisted cities go last.
-  const PRIORITY = ["Tokyo", "Delhi", "New York", "Mumbai", "Beijing", "London", "Cairo", "Mexico City", "Moscow",
-    "Kolkata", "Dhaka", "Bangkok", "Lagos", "Rio de Janeiro", "Lima", "Chicago", "Singapore", "Sydney", "Santiago",
-    "Nairobi", "Cape Town", "Yangon", "Kathmandu", "Honolulu", "Anchorage", "Reykjavík", "Nuuk",
-    "Nashville", "Colorado Springs", "Santa Fe", "Lubbock", "Rapid City", "Knoxville"];
-  const rank = (n) => { const i = PRIORITY.indexOf(n); return i < 0 ? PRIORITY.length : i; };
+  // Label priority when space is tight: bigger population wins.
+  const POP = Object.fromEntries(GEO.cities.map((c) => [c[0], c[3] || 0]));
+  const rank = (n) => -POP[n];
 
   // interaction
   let dragging = false, last = null, lastInteract = 0;
