@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Globe: North Pole in the Bay of Bengal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  :root { --bg:#07131f; --panel:rgba(12,28,44,.86); --ink:#e8eef2; --muted:#93a9b8; --line:#26425a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:radial-gradient(ellipse at 50% 40%, #10283d 0%, var(--bg) 70%); color:var(--ink);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; }
+  #wrap { position:fixed; inset:0; }
+  canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+  canvas.drag { cursor:grabbing; }
+  .panel { position:absolute; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  #info { top:16px; left:16px; max-width:330px; }
+  #info h1 { margin:0 0 6px; font-size:16px; letter-spacing:.02em; }
+  #info p { margin:6px 0; color:var(--muted); font-size:12.5px; }
+  #info b { color:var(--ink); font-weight:600; }
+  #ctrl { bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:6px; flex-wrap:wrap; justify-content:center; padding:10px; max-width:calc(100% - 24px); }
+  button { background:#14324a; color:var(--ink); border:1px solid #2c5373; border-radius:8px; padding:7px 11px; font:inherit; font-size:12.5px; cursor:pointer; }
+  button:hover { background:#1b4262; }
+  button.on { background:#2a6a95; border-color:#4c93c2; }
+  #legend { top:16px; right:16px; font-size:12px; }
+  #legend div { display:flex; align-items:center; gap:8px; margin:3px 0; color:var(--muted); }
+  #legend i { display:inline-block; width:22px; height:0; border-top:2px solid; }
+  #tip { position:absolute; pointer-events:none; background:#0b1d2e; border:1px solid var(--line); padding:4px 8px; border-radius:6px; font-size:12px; display:none; }
+  @media (max-width:640px) { #info { max-width:calc(100% - 32px); } #legend { display:none; } #info p.more { display:none; } }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+
+<div id="info" class="panel">
+  <h1>Earth, re-poled</h1>
+  <p>The <b>North Pole</b> is at the head of the <b>Bay of Bengal</b> (21.5°N, 89.5°E). This puts the <b>new equator</b> right through southern <b>Greenland</b>: Cape Farewell sits at 0.3°S and the island runs north to about 18°N.</p>
+  <p class="more">Drag to spin, scroll or pinch to zoom. Hover over a city to see its new latitude. All lines show the new latitude system; the dashed white line is where today's equator would end up.</p>
+</div>
+
+<div id="legend" class="panel">
+  <div><i style="border-color:#ffcf5a"></i>New equator</div>
+  <div><i style="border-color:#ff8a65;border-top-style:dashed"></i>New tropics (±23.4°)</div>
+  <div><i style="border-color:#7fd3ff"></i>New Arctic / Antarctic circles</div>
+  <div><i style="border-color:#ffffff;border-top-style:dashed;opacity:.7"></i>Today's equator</div>
+  <div><span style="color:#ff5a5a;font-size:14px">★</span>New poles &nbsp;<span style="color:#ddd">✕</span> Today's poles</div>
+</div>
+
+<div id="ctrl" class="panel">
+  <button data-go="greenland">Greenland</button>
+  <button data-go="np">New North Pole</button>
+  <button data-go="sp">New South Pole</button>
+  <button data-go="side">Side view</button>
+  <button id="spin" class="on">Auto-spin</button>
+  <button id="oldeq" class="on">Today's equator</button>
+  <button id="labels" class="on">Cities</button>
+</div>
+<div id="tip"></div>
+
+<script>
+/*__DATA__*/
+(function () {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const tip = document.getElementById("tip");
+  let W = 0, H = 0, dpr = 1, baseR = 300, zoom = 1;
+
+  const projection = d3.geoOrthographic().clipAngle(90).precision(0.4);
+  const path = d3.geoPath(projection, ctx);
+  const sphere = { type: "Sphere" };
+  const grat = d3.geoGraticule().step([15, 15]).extentMinor([[-180, -80.01], [180, 80.01]])();
+  const ring = (lat) => ({ type: "LineString", coordinates: d3.range(-180, 180.5, 1).map((lon) => [lon, lat]) });
+  const EQ = ring(0), TN = ring(23.44), TS = ring(-23.44), AN = ring(66.56), AS = ring(-66.56);
+
+  // Find where Greenland's centre sits in the new frame (Nuuk is close enough to the equator to aim at)
+  const nuuk = GEO.cities.find((c) => c[0] === "Nuuk");
+  const views = {
+    greenland: [-nuuk[1], -18, 0],
+    np: [-nuuk[1], -90, 0],
+    sp: [-nuuk[1], 90, 0],
+    side: [-nuuk[1] + 90, 0, 0],
+  };
+  let rot = [-nuuk[1] + 40, -24, 0];
+  projection.rotate(rot);
+
+  let showOld = true, showLabels = true, spinning = true;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    baseR = Math.min(W, H) * 0.40;
+    draw();
+  }
+
+  function stroke(geo, color, width, dash) {
+    ctx.beginPath(); path(geo);
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  function marker(lonlat, draw) {
+    const r = projection.rotate();
+    const d = d3.geoDistance(lonlat, [-r[0], -r[1]]);
+    if (d > Math.PI / 2) return;
+    const p = projection(lonlat); draw(p[0], p[1]);
+  }
+
+  function draw() {
+    const R = baseR * zoom;
+    projection.scale(R).translate([W / 2, H / 2 + (W < 640 ? 30 : 0)]);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const [cx, cy] = projection.translate();
+
+    // atmosphere glow
+    const glow = ctx.createRadialGradient(cx, cy, R * 0.95, cx, cy, R * 1.12);
+    glow.addColorStop(0, "rgba(90,170,230,0.35)"); glow.addColorStop(1, "rgba(90,170,230,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, 2 * Math.PI); ctx.fill();
+
+    // ocean with a light source
+    const ocean = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+    ocean.addColorStop(0, "#2f7fb6"); ocean.addColorStop(1, "#0d3558");
+    ctx.beginPath(); path(sphere); ctx.fillStyle = ocean; ctx.fill();
+
+    stroke(grat, "rgba(190,220,240,0.16)", 0.7);
+
+    // land
+    ctx.beginPath(); path(GEO.land);
+    const landG = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+    landG.addColorStop(0, "#d9cfa8"); landG.addColorStop(0.6, "#a9a478"); landG.addColorStop(1, "#6c7350");
+    ctx.fillStyle = landG; ctx.fill();
+    ctx.strokeStyle = "rgba(40,50,35,0.55)"; ctx.lineWidth = 0.6; ctx.stroke();
+    stroke(GEO.borders, "rgba(60,60,45,0.35)", 0.45);
+
+    // new latitude lines
+    stroke(AN, "#7fd3ff", 1.6); stroke(AS, "#7fd3ff", 1.6);
+    stroke(TN, "#ff8a65", 1.3, [6, 5]); stroke(TS, "#ff8a65", 1.3, [6, 5]);
+    stroke(EQ, "#ffcf5a", 2.4);
+
+    if (showOld) {
+      stroke(GEO.oldEq, "rgba(255,255,255,0.7)", 1.2, [3, 4]);
+      for (const p of [GEO.oldNP, GEO.oldSP]) marker(p, (x, y) => {
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5); ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5); ctx.stroke();
+      });
+    }
+
+    // new poles
+    for (const lat of [90, -90]) marker([0, lat], (x, y) => {
+      ctx.fillStyle = "#ff5a5a"; ctx.font = "bold 20px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("★", x, y);
+      ctx.font = "bold 11px system-ui"; ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3;
+      const lbl = lat > 0 ? "NEW NORTH POLE" : "NEW SOUTH POLE";
+      ctx.strokeText(lbl, x, y - 17); ctx.fillText(lbl, x, y - 17);
+    });
+
+    // equator label near Greenland
+    marker([nuuk[1] + 14, 0.8], (x, y) => {
+      ctx.font = "bold 11px system-ui"; ctx.fillStyle = "#ffcf5a"; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+      ctx.fillText("NEW EQUATOR", x, y - 2);
+    });
+
+    // cities
+    hits = [];
+    if (showLabels) {
+      ctx.font = "11px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      for (const [name, lon, lat] of GEO.cities) marker([lon, lat], (x, y) => {
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3; ctx.strokeText(name, x + 6, y);
+        ctx.fillStyle = "#f3f6f8"; ctx.fillText(name, x + 6, y);
+        hits.push([x, y, name, lat]);
+      });
+    }
+
+    // terminator-ish shading for depth
+    const shade = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.5, cx, cy, R * 1.02);
+    shade.addColorStop(0, "rgba(0,0,0,0)"); shade.addColorStop(1, "rgba(0,0,20,0.45)");
+    ctx.beginPath(); path(sphere); ctx.fillStyle = shade; ctx.fill();
+  }
+  let hits = [];
+
+  // interaction
+  let dragging = false, last = null, lastInteract = 0;
+  const pointers = new Map(); let pinch0 = null, zoom0 = 1;
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = zoom; }
+    dragging = true; last = [e.clientX, e.clientY]; canvas.classList.add("drag"); anim = null; lastInteract = performance.now();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2 && pinch0) {
+      const [a, b] = [...pointers.values()];
+      zoom = Math.max(0.5, Math.min(6, zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0)); draw(); return;
+    }
+    if (dragging) {
+      const k = 75 / (baseR * zoom);
+      const r = projection.rotate();
+      r[0] += (e.clientX - last[0]) * k;
+      r[1] = Math.max(-90, Math.min(90, r[1] - (e.clientY - last[1]) * k));
+      projection.rotate(r); last = [e.clientX, e.clientY]; lastInteract = performance.now(); draw();
+      tip.style.display = "none"; return;
+    }
+    // hover
+    let best = null, bd = 10;
+    for (const h of hits) { const d = Math.hypot(h[0] - e.clientX, h[1] - e.clientY); if (d < bd) { bd = d; best = h; } }
+    if (best) {
+      const lat = best[3];
+      tip.textContent = `${best[2]}: ${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"} (new latitude)`;
+      tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY + 12 + "px"; tip.style.display = "block";
+    } else tip.style.display = "none";
+  });
+  const end = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch0 = null; if (!pointers.size) { dragging = false; canvas.classList.remove("drag"); } };
+  canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.max(0.5, Math.min(6, zoom * Math.exp(-e.deltaY * 0.0015))); draw(); }, { passive: false });
+
+  // animated view presets
+  let anim = null;
+  document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => {
+    const from = projection.rotate(), to = views[b.dataset.go].slice();
+    to[0] = from[0] + ((((to[0] - from[0]) % 360) + 540) % 360 - 180);
+    anim = { t0: performance.now(), i: d3.interpolate(from, to) }; lastInteract = performance.now();
+  }));
+  const toggle = (id, fn) => { const b = document.getElementById(id); b.addEventListener("click", () => { b.classList.toggle("on"); fn(b.classList.contains("on")); draw(); }); };
+  toggle("spin", (v) => (spinning = v));
+  toggle("oldeq", (v) => (showOld = v));
+  toggle("labels", (v) => (showLabels = v));
+
+  let prev = performance.now();
+  function tick(now) {
+    const dt = Math.min(50, now - prev); prev = now;
+    if (anim) {
+      const t = Math.min(1, (now - anim.t0) / 1200), e = d3.easeCubicInOut(t);
+      projection.rotate(anim.i(e)); draw(); if (t >= 1) anim = null;
+    } else if (spinning && !dragging && now - lastInteract > 2500) {
+      const r = projection.rotate(); r[0] += dt * 0.006; projection.rotate(r); draw();
+    }
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener("resize", resize);
+  resize(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

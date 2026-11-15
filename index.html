@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Re-poled Earth: the North Pole in the Bay of Bengal</title>
+<style>
+  :root { --bg:#07131f; --card:#0e2234; --line:#26425a; --ink:#e8eef2; --muted:#93a9b8; --accent:#ffcf5a; --red:#ff6b5a; }
+  * { box-sizing:border-box; }
+  html { background:var(--bg); }
+  body { margin:0; background:radial-gradient(ellipse at 50% 0%, #12304a 0%, var(--bg) 60%) fixed; color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:980px; margin:0 auto; padding:56px 22px 72px; }
+  .eyebrow { color:var(--accent); font-size:13px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
+  h1 { font-size:clamp(30px,5vw,48px); line-height:1.1; margin:10px 0 14px; }
+  .lede { color:var(--muted); font-size:18px; max-width:680px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; margin:36px 0 48px; }
+  a.card { display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; color:inherit; text-decoration:none; transition:transform .15s, border-color .15s; }
+  a.card:hover { transform:translateY(-3px); border-color:#4c93c2; }
+  .card .thumb { aspect-ratio:16/10; background:#0b1d2e center/cover no-repeat; display:flex; align-items:center; justify-content:center; }
+  .card .body { padding:16px 18px 18px; }
+  .card h2 { margin:0 0 4px; font-size:19px; }
+  .card p { margin:0; color:var(--muted); font-size:14.5px; }
+  .go { color:var(--accent); font-weight:600; font-size:14px; margin-top:10px; display:inline-block; }
+  h3 { font-size:20px; margin:40px 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:9px 14px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }
+  tr:last-child td { border-bottom:0; }
+  td.n { font-variant-numeric:tabular-nums; }
+  .note { color:var(--muted); font-size:15px; }
+  code { background:#0b1d2e; border:1px solid var(--line); padding:1px 6px; border-radius:5px; font-size:14px; }
+  footer { color:var(--muted); font-size:13px; margin-top:56px; border-top:1px solid var(--line); padding-top:18px; }
+  footer a { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">A thought experiment in geography</div>
+  <h1>What if the North Pole sat in the Bay of Bengal?</h1>
+  <p class="lede">Move the pole to the head of the Bay of Bengal (21.5°N, 89.5°E) and redraw every line of latitude. India becomes an Arctic landmass, and the new equator runs straight through southern Greenland.</p>
+
+  <div class="cards">
+    <a class="card" href="globe.html">
+      <div class="thumb" style="background:radial-gradient(circle at 40% 35%, #2f7fb6, #0d3558 70%)">
+        <svg viewBox="0 0 200 125" width="70%" aria-hidden="true">
+          <circle cx="100" cy="62" r="54" fill="none" stroke="#7fd3ff" stroke-opacity=".35"/>
+          <ellipse cx="100" cy="62" rx="54" ry="16" fill="none" stroke="#ffcf5a" stroke-width="2.5"/>
+          <ellipse cx="100" cy="30" rx="34" ry="8" fill="none" stroke="#7fd3ff" stroke-width="1.5"/>
+          <text x="100" y="16" fill="#ff5a5a" font-size="16" text-anchor="middle">★</text>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Interactive 3D globe</h2>
+        <p>Spin the re-poled Earth, jump to the new poles or to Greenland, and hover over cities to see their new latitudes.</p>
+        <span class="go">Open the globe →</span>
+      </div>
+    </a>
+    <a class="card" href="assets/arctic_circle_bay_of_bengal.png">
+      <div class="thumb" style="background-image:url('assets/arctic_circle_bay_of_bengal.png')"></div>
+      <div class="body">
+        <h2>The new Arctic Circle</h2>
+        <p>A polar map centred on the new pole, showing everything within 23.44° (about 2,605 km) of it.</p>
+        <span class="go">View the map →</span>
+      </div>
+    </a>
+  </div>
+
+  <h3>Where things would end up</h3>
+  <table>
+    <tr><th>Place</th><th>New latitude</th><th>What that's like today</th></tr>
+    <tr><td>Kolkata</td><td class="n">88.5°N</td><td>Almost at the pole: six months of day, six months of night</td></tr>
+    <tr><td>Kathmandu</td><td class="n">82.7°N</td><td>Alert, Canada: the world's northernmost settlement</td></tr>
+    <tr><td>Delhi</td><td class="n">76.8°N</td><td>Svalbard</td></tr>
+    <tr><td>Singapore</td><td class="n">65.5°N</td><td>Just short of the Arctic Circle, like Fairbanks</td></tr>
+    <tr><td>Tokyo</td><td class="n">44.2°N</td><td>Minneapolis or Bordeaux</td></tr>
+    <tr><td>London</td><td class="n">16.9°N</td><td>The tropics, like Mumbai</td></tr>
+    <tr><td>Nuuk, Greenland</td><td class="n">0.8°N</td><td>On the equator</td></tr>
+    <tr><td>New York</td><td class="n">25.9°S</td><td>Southern subtropics, like Brisbane</td></tr>
+    <tr><td>Lima</td><td class="n">74.0°S</td><td>Antarctic coast</td></tr>
+  </table>
+
+  <h3>How it works</h3>
+  <p class="note">The globe is rotated so that 21.5°N, 89.5°E moves to the top: a turn of 89.5° about today's axis, then a tilt of 68.5°. A rotation keeps every coastline and distance unchanged; only the grid of latitude and longitude moves. Each place's new latitude is 90° minus its great-circle distance from the new pole. The Arctic Circle is drawn at today's 66°34′, which assumes Earth's axial tilt stays the same.</p>
+
+  <footer>
+    Coastline and border data: <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain). Globe rendered with <a href="https://d3js.org/">d3-geo</a>.
+  </footer>
+</main>
+</body>
+</html>

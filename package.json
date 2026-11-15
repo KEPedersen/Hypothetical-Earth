@@ -1,0 +1,15 @@
+{
+  "name": "hypothetical-earth",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:globe": "mkdir -p build && node scripts/prep_globe_data.mjs && python3 scripts/build_globe.py",
+    "build:map": "python3 scripts/arctic_circle_map.py",
+    "build": "npm run build:globe && npm run build:map"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  }
+}
