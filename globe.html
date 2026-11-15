@@ -42,6 +42,7 @@
 <div id="legend" class="panel">
   <div><i style="border-color:#ffcf5a"></i>New equator</div>
   <div><i style="border-color:#ff8a65;border-top-style:dashed"></i>New tropics (±23.4°)</div>
+  <div><i style="border-color:#6aaeff;border-top-style:dashed"></i>New subtropic limits (±35°)</div>
   <div><i style="border-color:#7fd3ff"></i>New Arctic / Antarctic circles</div>
   <div><i style="border-color:#ffffff;border-top-style:dashed;opacity:.7"></i>Today's equator</div>
   <div><span style="color:#ff5a5a;font-size:14px">★</span>New poles &nbsp;<span style="color:#ddd">✕</span> Today's poles</div>
@@ -71,7 +72,7 @@ const GEO={"land":{"type":"MultiPolygon","coordinates":[[[[75.07,-6.31],[74.9,-6
   const sphere = { type: "Sphere" };
   const grat = d3.geoGraticule().step([15, 15]).extentMinor([[-180, -80.01], [180, 80.01]])();
   const ring = (lat) => ({ type: "LineString", coordinates: d3.range(-180, 180.5, 1).map((lon) => [lon, lat]) });
-  const EQ = ring(0), TN = ring(23.44), TS = ring(-23.44), AN = ring(66.56), AS = ring(-66.56);
+  const EQ = ring(0), TN = ring(23.44), TS = ring(-23.44), AN = ring(66.56), AS = ring(-66.56), SN = ring(35), SS = ring(-35);
 
   // Find where Greenland's centre sits in the new frame (Nuuk is close enough to the equator to aim at)
   const nuuk = GEO.cities.find((c) => c[0] === "Nuuk");
@@ -135,6 +136,7 @@ const GEO={"land":{"type":"MultiPolygon","coordinates":[[[[75.07,-6.31],[74.9,-6
 
     // new latitude lines
     stroke(AN, "#7fd3ff", 1.6); stroke(AS, "#7fd3ff", 1.6);
+    for (const s of [SN, SS]) { stroke(s, "rgba(4,16,40,0.55)", 4, [10, 5]); stroke(s, "#6aaeff", 1.8, [10, 5]); }
     stroke(TN, "#ff8a65", 1.3, [6, 5]); stroke(TS, "#ff8a65", 1.3, [6, 5]);
     stroke(EQ, "#ffcf5a", 2.4);
 
