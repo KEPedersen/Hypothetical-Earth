@@ -36,7 +36,7 @@
 <div id="info" class="panel">
   <h1>Earth, re-poled</h1>
   <p>The <b>North Pole</b> is at the head of the <b>Bay of Bengal</b> (21.5°N, 89.5°E). This puts the <b>new equator</b> right through southern <b>Greenland</b>: Cape Farewell sits at 0.3°S and the island runs north to about 18°N.</p>
-  <p class="more">Drag to spin, scroll or pinch to zoom. Hover over a city to see its new latitude. All lines show the new latitude system; the dashed white line is where today's equator would end up.</p>
+  <p class="more">Drag to spin, scroll or pinch to zoom. Hover over a city to see its new latitude. Where cities crowd together, smaller ones show as dots only: hover to see the name, or zoom in to bring the label back. All lines show the new latitude system; the dashed white line is where today's equator would end up.</p>
 </div>
 
 <div id="legend" class="panel">
@@ -146,6 +146,13 @@ const GEO={"land":{"type":"MultiPolygon","coordinates":[[[[75.07,-6.31],[74.9,-6
       });
     }
 
+    // Boxes already occupied by text or markers; city labels must avoid them.
+    const box = (x, y, w, h) => ({ x, y, w, h });
+    // The overlay panels count as occupied, so labels never slide underneath them.
+    const taken = [...document.querySelectorAll(".panel")].map((el) => {
+      const r = el.getBoundingClientRect(); return box(r.left, r.top, r.width, r.height);
+    });
+
     // new poles
     for (const lat of [90, -90]) marker([0, lat], (x, y) => {
       ctx.fillStyle = "#ff5a5a"; ctx.font = "bold 20px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -154,24 +161,58 @@ const GEO={"land":{"type":"MultiPolygon","coordinates":[[[[75.07,-6.31],[74.9,-6
       ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3;
       const lbl = lat > 0 ? "NEW NORTH POLE" : "NEW SOUTH POLE";
       ctx.strokeText(lbl, x, y - 17); ctx.fillText(lbl, x, y - 17);
+      const w = ctx.measureText(lbl).width;
+      taken.push(box(x - 9, y - 9, 18, 18), box(x - w / 2, y - 24, w, 14));
     });
 
     // equator label near Greenland
     marker([nuuk[1] + 14, 0.8], (x, y) => {
       ctx.font = "bold 11px system-ui"; ctx.fillStyle = "#ffcf5a"; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
       ctx.fillText("NEW EQUATOR", x, y - 2);
+      taken.push(box(x, y - 15, ctx.measureText("NEW EQUATOR").width, 13));
     });
 
-    // cities
+    // cities: every visible city gets a dot and a hover target; labels are placed by
+    // priority and only where they fit, so they never overlap each other or the dots.
     hits = [];
     if (showLabels) {
-      ctx.font = "11px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      for (const [name, lon, lat] of GEO.cities) marker([lon, lat], (x, y) => {
-        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 2 * Math.PI); ctx.fill();
-        ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3; ctx.strokeText(name, x + 6, y);
-        ctx.fillStyle = "#f3f6f8"; ctx.fillText(name, x + 6, y);
-        hits.push([x, y, name, lat]);
-      });
+      const vis = [];
+      for (const [name, lon, lat] of GEO.cities) marker([lon, lat], (x, y) => vis.push({ name, lat, x, y }));
+      for (const c of vis) taken.push(box(c.x - 4, c.y - 4, 8, 8));
+      vis.sort((a, b) => rank(a.name) - rank(b.name));
+
+      ctx.font = "11px system-ui"; ctx.textBaseline = "middle";
+      const LH = 13, PAD = 2;
+      const hitsBox = (b) => taken.some((t) => b.x < t.x + t.w + PAD && b.x + b.w + PAD > t.x && b.y < t.y + t.h + PAD && b.y + b.h + PAD > t.y);
+      const onScreen = (b) => b.x > 2 && b.y > 2 && b.x + b.w < W - 2 && b.y + b.h < H - 2;
+
+      const MIN_DOT_SEP = 22; // px: closer than this to a higher-priority dot, a label would be ambiguous
+      vis.forEach((c, i) => { c.crowded = vis.slice(0, i).some((o) => Math.hypot(o.x - c.x, o.y - c.y) < MIN_DOT_SEP); });
+
+      for (const c of vis) {
+        if (c.crowded) { c.labelled = false; hits.push([c.x, c.y, c.name, c.lat]); continue; }
+        const w = ctx.measureText(c.name).width;
+        // Preferred spots, in order: right, left, upper-right, lower-right, above, below.
+        const spots = [
+          [c.x + 6, c.y - LH / 2], [c.x - 6 - w, c.y - LH / 2],
+          [c.x + 4, c.y - LH - 2], [c.x + 4, c.y + 2],
+          [c.x - w / 2, c.y - LH - 5], [c.x - w / 2, c.y + 5],
+        ];
+        const spot = spots.map(([x, y]) => box(x, y, w, LH)).find((b) => onScreen(b) && !hitsBox(b));
+        c.labelled = !!spot;
+        if (spot) {
+          taken.push(spot);
+          ctx.textAlign = "left";
+          ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3; ctx.strokeText(c.name, spot.x, spot.y + LH / 2);
+          ctx.fillStyle = "#f3f6f8"; ctx.fillText(c.name, spot.x, spot.y + LH / 2);
+        }
+        hits.push([c.x, c.y, c.name, c.lat]);
+      }
+      // Dots on top; cities whose label didn't fit get a slightly smaller, softer dot.
+      for (const c of vis) {
+        ctx.fillStyle = c.labelled ? "#fff" : "rgba(255,255,255,0.75)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.labelled ? 2.6 : 2.1, 0, 2 * Math.PI); ctx.fill();
+      }
     }
 
     // terminator-ish shading for depth
@@ -180,6 +221,13 @@ const GEO={"land":{"type":"MultiPolygon","coordinates":[[[[75.07,-6.31],[74.9,-6
     ctx.beginPath(); path(sphere); ctx.fillStyle = shade; ctx.fill();
   }
   let hits = [];
+
+  // Label priority when space is tight: lower index wins. Unlisted cities go last.
+  const PRIORITY = ["Tokyo", "Delhi", "New York", "Mumbai", "Beijing", "London", "Cairo", "Mexico City", "Moscow",
+    "Kolkata", "Dhaka", "Bangkok", "Lagos", "Rio de Janeiro", "Lima", "Chicago", "Singapore", "Sydney", "Santiago",
+    "Nairobi", "Cape Town", "Yangon", "Kathmandu", "Honolulu", "Anchorage", "Reykjavík", "Nuuk",
+    "Nashville", "Colorado Springs", "Santa Fe", "Lubbock", "Rapid City", "Knoxville"];
+  const rank = (n) => { const i = PRIORITY.indexOf(n); return i < 0 ? PRIORITY.length : i; };
 
   // interaction
   let dragging = false, last = null, lastInteract = 0;
