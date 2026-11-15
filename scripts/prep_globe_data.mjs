@@ -29,6 +29,8 @@ const cities = {
   "Rio de Janeiro": [-43.17, -22.91], Honolulu: [-157.86, 21.31], Sydney: [151.21, -33.87],
   "Cape Town": [18.42, -33.92], Lagos: [3.38, 6.52], Singapore: [103.82, 1.35], Nairobi: [36.82, -1.29],
   Anchorage: [-149.9, 61.22], Reykjavík: [-21.94, 64.15], Chicago: [-87.63, 41.88], Santiago: [-70.67, -33.45],
+  "Colorado Springs": [-104.82, 38.83], Nashville: [-86.78, 36.16], Knoxville: [-83.92, 35.96],
+  "Rapid City": [-103.23, 44.08], Lubbock: [-101.86, 33.58], "Santa Fe": [-105.94, 35.69],
 };
 const cityOut = Object.entries(cities).map(([n, c]) => { const p = r(c); return [n, p[0], p[1]]; });
 
@@ -36,4 +38,4 @@ const data = { land: landGeom, borders, oldEq, oldNP, oldSP, cities: cityOut };
 fs.writeFileSync("build/data.js", "const GEO=" + JSON.stringify(data) + ";");
 for (const [n, , lat] of cityOut) console.log(n.padEnd(15), lat.toFixed(1));
 console.log("Greenland S tip", r([-43.9, 59.8])[1], " N tip", r([-33, 83.6])[1]);
-console.log("bytes", fs.statSync("data.js").size);
+console.log("bytes", fs.statSync("build/data.js").size);
